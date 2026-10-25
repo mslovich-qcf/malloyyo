@@ -28,6 +28,7 @@ import {
   type BoundModel,
   type ExploreHost,
   type ModelEntry,
+  type ToolAnnotations,
   type RunResult,
   type WithHostOnly,
 } from "@malloyyo/mcp-engine";
@@ -341,6 +342,7 @@ const OPEN_SHARE_LINK = {
     required: ["slug"],
     additionalProperties: false,
   },
+  annotations: { readOnlyHint: true, idempotentHint: true },
 } as const;
 
 // Host policy: main required a `question` on every query (its share label). The
@@ -378,7 +380,13 @@ function withModelParam(inputSchema: Record<string, unknown>): Record<string, un
 
 export interface HostedSurface {
   instructions: string;
-  descriptors: Array<{ name: string; title?: string; description: string; inputSchema: Record<string, unknown> }>;
+  descriptors: Array<{
+    name: string;
+    title?: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+    annotations?: ToolAnnotations;
+  }>;
   call(name: string, args: Record<string, unknown>): Promise<ToolResult>;
 }
 
@@ -461,6 +469,9 @@ export function buildHostedExploreSurface(
         // instance-agnostic; multi-instance routing is the host's concern.
         description: tag(t.description),
         inputSchema: schema(t.name, t.inputSchema),
+        // Forward the engine's MCP annotations; without this the hosted route
+        // drops them and every read-only tool looks potentially mutating.
+        ...(t.annotations ? { annotations: t.annotations } : {}),
       })),
     ...(keep(OPEN_SHARE_LINK.name)
       ? [
