@@ -123,7 +123,12 @@ function buildServer(scope: RequestScope): McpServer {
   for (const d of hosted.descriptors) {
     server.registerTool(
       d.name,
-      { title: d.title, description: d.description, inputSchema: publishedSchema(d.inputSchema) },
+      {
+        title: d.title,
+        description: d.description,
+        inputSchema: publishedSchema(d.inputSchema),
+        ...(d.annotations ? { annotations: d.annotations } : {}),
+      },
       logged(scope, d.name, async (args: Json) => (await hosted.call(d.name, args)) as CallToolResult),
     );
   }

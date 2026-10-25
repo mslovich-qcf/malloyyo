@@ -59,6 +59,9 @@ export function attachSurface(
         title: tool.title,
         description: tool.description,
         inputSchema: publishedSchema(tool.inputSchema),
+        // Omitted entirely when a tool declares none, so hosts fall back to the
+        // spec default (assume the tool may mutate) rather than seeing `{}`.
+        ...(tool.annotations ? { annotations: tool.annotations } : {}),
       },
       // Compile/run failures are data (problems[]), never protocol errors.
       async (args) => toContent(await tool.handler(args ?? {})) as CallToolResult,
