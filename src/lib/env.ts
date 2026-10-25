@@ -54,6 +54,16 @@ export const env = {
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
   },
+  // Whether an unauthenticated caller may read public datasets. The read routes
+  // that list datasets/sources, and the one that returns a dataset's model
+  // source and files, otherwise fall back to a public-only query when there is
+  // no session. On a deployment whose whole point is that only staff can see
+  // the model (SSO-gated), "public" should mean "everyone signed in here" —
+  // not "the internet". Defaults false so a missing or misspelled value fails
+  // closed.
+  get ALLOW_ANONYMOUS_PUBLIC_DATASETS(): boolean {
+    return (process.env.ALLOW_ANONYMOUS_PUBLIC_DATASETS ?? "false").trim().toLowerCase() === "true";
+  },
   // Optional — needed for private GitHub repos, and without any token public-repo
   // fetches run against GitHub's anonymous 60/hour-per-IP budget, which on shared cloud
   // egress is usually already spent by other tenants of the address.

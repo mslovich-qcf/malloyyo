@@ -20,7 +20,7 @@ import { z } from "zod";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { nameToSlug as engineSlug } from "@malloyyo/mcp-engine";
 import { db, datasets, malloyModels, repoRevisions, repos, users } from "@/db";
-import { getSessionUser, UnauthorizedError } from "@/lib/user";
+import { allowAnonymousPublicReads, getSessionUser, UnauthorizedError } from "@/lib/user";
 import { isAdmin } from "@/lib/admin";
 import { canAuthor, datasetVisibleWhere } from "@/lib/roles";
 import { nameToSlug } from "@/lib/slug";
@@ -293,6 +293,9 @@ export async function GET() {
     user = await getSessionUser();
   } catch (err) {
     if (err instanceof UnauthorizedError) {
+      if (!allowAnonymousPublicReads()) {
+        return NextResponse.json({ error: "sign in required" }, { status: 401 });
+      }
       const rows = await db
         .select({
           id: datasets.id,
