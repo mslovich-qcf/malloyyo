@@ -8,7 +8,7 @@ import { db, datasets, malloyArtifacts, repoRevisions, repos } from "@/db";
 import { parseGitHubRepo } from "@/lib/github";
 import { latestModel, modelFileMap } from "@/lib/mcp-tools";
 import { qualifiedName, resolveDatasetRef } from "@/lib/repos";
-import { getSessionUser, UnauthorizedError } from "@/lib/user";
+import { allowAnonymousPublicReads, getSessionUser, UnauthorizedError } from "@/lib/user";
 import { isAdmin } from "@/lib/admin";
 import { captureTelemetry } from "@/lib/telemetry";
 
@@ -18,6 +18,18 @@ export async function GET(
   _req: Request,
   ctx: RouteContext<"/api/datasets/[id]">,
 ) {
+  // Resolve the session before touching the database: when anonymous reads are
+  // disabled every caller without one gets the same 401, so the response can't
+  // be used to probe which dataset names exist.
+  let me;
+  try { me = await getSessionUser(); } catch (err) {
+    if (!(err instanceof UnauthorizedError)) throw err;
+    if (!allowAnonymousPublicReads()) {
+      return NextResponse.json({ error: "sign in required" }, { status: 401 });
+    }
+    me = null;
+  }
+
   const { id } = await ctx.params;
   // A uuid, `repo:dataset`, an old bare name (pinned by an alias), or a bare
   // name that is still unambiguous - one ordered rule, in src/lib/repos.ts, so
@@ -32,13 +44,7 @@ export async function GET(
   const ds = resolved.dataset;
   const repo = resolved.repo;
 
-  let me;
-  try { me = await getSessionUser(); } catch (err) {
-    if (err instanceof UnauthorizedError) {
-      if (!ds.isPublic) return NextResponse.json({ error: "not found" }, { status: 404 });
-      me = null;
-    } else throw err;
-  }
+  if (!me && !ds.isPublic) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   if (me && !ds.isPublic && !isAdmin(me) && ds.userId !== me.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });

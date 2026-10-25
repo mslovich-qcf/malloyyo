@@ -5,12 +5,22 @@ import { db, users, type User } from "@/db";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { authorize } from "./authorize";
+import { env } from "./env";
 
 export class UnauthorizedError extends Error {
   constructor(msg: string) {
     super(msg);
     this.name = "UnauthorizedError";
   }
+}
+
+// Whether a read route may serve a caller with no valid session by falling back
+// to public datasets. Off by default: see env.ALLOW_ANONYMOUS_PUBLIC_DATASETS.
+// getSessionUser throws the same UnauthorizedError for an anonymous caller and
+// for one who is signed in but not authorized, so with the fallback enabled
+// authorization buys nothing on those routes.
+export function allowAnonymousPublicReads(): boolean {
+  return env.ALLOW_ANONYMOUS_PUBLIC_DATASETS;
 }
 
 /** getSessionUser(), but null instead of throwing — for routes that offer a sign-in. */
